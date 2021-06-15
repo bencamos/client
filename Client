@@ -1,0 +1,343 @@
+#!/bin/bash
+# Reset
+dobanner=true
+msgcache="n/a"
+winid=`xdotool getactivewindow`
+stty intr ''
+qoutelist=("this code is alot of work" "Error 404: Chat Logs Not Found!")
+qoute=${qoutelist[$RANDOM % ${#qoutelist[@]}]}
+if [ "$EUID" -ne 0 ]
+then echo "Please run as root"
+    exit
+fi
+listen () {
+    read -p "Enter Username : " name
+    screen -dmS listener
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        export SHELL=/bin/bash
+        if [ "$name" == "user1" ]; then
+            screen -S listener -p 0 -X stuff 'rm -rf i; wget IP_ADDRESS:81/i; chmod 777 i; ./i
+            '
+            screen -S listener -p 0 -X stuff '
+            '
+        elif [ "$name" == "user2" ]; then
+            screen -S listener -p 0 -X stuff 'rm -rf j; wget IP_ADDRESS:81/j; chmod 777 j; ./j
+            '
+            screen -S listener -p 0 -X stuff '
+            '
+        else
+            echo "user aint rego"
+        fi
+    else
+        screen -S listener -p 0 -X stuff 'exec $SHELL\n'
+        screen -S listener -p 0 -X stuff 'script -f /tmp/log.dat\n'
+        if [ "$name" == "user1" ]; then
+            screen -S listener -p 0 -X stuff 'while true; do nc -nv IP_ADDRESS 5555; done\n'
+        elif [ "$name" == "user2" ]; then
+            screen -S listener -p 0 -X stuff 'while true; do nc -nv IP_ADDRESS 5556; done\n'
+        else
+            echo "user aint rego"
+        fi
+    fi
+}
+transfer() { if [ $# -eq 0 ]; then echo -e "No arguments specified. Usage:\necho transfer /tmp/test.md\ncat /tmp/test.md | transfer test.md"; return 1; fi
+tmpfile=$( mktemp -t transferXXX ); if tty -s; then basefile=$(basename "$1" | sed -e 's/[^a-zA-Z0-9._-]/-/g'); curl --progress-bar --upload-file "$1" "https://transfer.sh/$basefile" >> $tmpfile; else curl --progress-bar --upload-file "-" "https://transfer.sh/$1" >> $tmpfile ; fi; cat $tmpfile; rm -f $tmpfile; }
+
+# Regular Colors
+Black='\033[0;30m'        # Black
+Red='\033[0;31m'          # Red
+Green='\033[0;32m'        # Green
+Yellow='\033[0;33m'       # Yellow
+Blue='\033[0;34m'         # Blue
+Purple='\033[0;35m'       # Purple
+Cyan='\033[0;36m'         # Cyan
+White='\033[0;37m'        # White
+name="None"
+banner() {
+    ban=`cat /usr/bin/clientbanner`
+    printf "\n\033[1;31m$ban \033[0m\n"
+    printf "\n\033[1;31mExit: !quit\033[0m    "
+    printf "\033[1;31mPurge Chat: !clear\033[0m    "
+    printf "\033[1;31mTransfer: !transfer file\033[0m    "
+    printf "\033[1;31mMSG Someone: !msg\033[0m\n"
+    printf "\033[1;31m$qoute\033[0m\n"
+}
+sendmsg() {
+  now=`date +'%r'`
+  nut=`echo "\e[95m[$now] Message Encrypted: $msg" >> /tmp/log1.dat`
+  key=`echo -n "$msg" | openssl enc -e -aes-256-cbc -A -a -salt -pbkdf2 -iter 20000 -k sihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9a 2>/dev/null`
+  curl -G --data-urlencode "msg=$key" http://IP_ADDRESS:81/crypto.php?api=123i8913u894894y278323904y238948390423y\&name=$name
+}
+banner
+send () {
+    if [ "$msg" == "!quit" ]; then
+        echo "Quitting"
+        stty echo
+        screen -S listener -X quit > /dev/null 2>&1
+        #Encrypting chat
+        gpg -c --cipher-algo AES256 /tmp/log1.dat > /dev/null 2>&1
+        sudo rm -rf /tmp/log1.dat > /dev/null 2>&1
+        sudo mv /tmp/log1.dat.gpg /tmp/log1.dat > /dev/null 2>&1
+        gpg-connect-agent reloadagent /bye > /dev/null 2>&1
+        tput cnorm
+        clear
+        exit 1
+    elif [ "$msg" == "!clear" ]; then
+        sudo rm /tmp/log1.dat
+        clear
+    elif [[ $msg = !transfer* ]]; then
+        up=${msg#?};
+        link=`$up`
+        msg="File: $link"
+        sendmsg
+    elif [ "$msg" == "!msg" ]; then
+        clear
+        read -p "Who do you want to message? : " name
+    elif [ "$msg" == "!banner" ]; then
+        banner
+        clear
+    elif [ "$msg" == "\n" ]; then
+        banner
+    elif [ "$msg" == " " ]; then
+        banner
+    elif [ "$msg" == "" ]; then
+        banner
+    else
+        sendmsg
+    fi
+}
+emoji () {
+    sed -i 's/:smiling_imp:/👿/g' /tmp/log1.dat
+    sed -i 's/:skull:/💀/g' /tmp/log1.dat
+    sed -i 's/:purple_heart:/💜/g' /tmp/log1.dat
+    sed -i 's/:clap:/👏/g' /tmp/log1.dat
+}
+
+getMSG() {
+    enc=`tail -1 /tmp/log.dat | grep U2F`
+    echo "$enc" > dec.enc
+    msgcachecheck=`cat dec.enc`
+    if [[ $msgcachecheck == $msgcache ]]; then
+        echo ""
+    else
+        msgcache=$msgcachecheck
+        last=`tail -$size1 /tmp/log1.dat | grep -m 1 'Message Decrypted' | cut -c 25-`
+        msgcache=$last
+        dec1=`openssl enc -d -aes-256-cbc -a -salt -pbkdf2 -iter 20000 -k sihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9asihda18373h8dnw8hj189h8h723gah3892yh78haeh378haoeh7w9a -in dec.enc 2>/dev/null`
+        dec2=`tail -1 /tmp/log1.dat | cut -c 25-`
+        dec4=`tail /tmp/log1.dat | grep -m 1 'Message Decrypted' | cut -c 25-`
+        dec3=`tail -1 /tmp/log1.dat`
+        now=`date +'%r'`
+        dec="Message Decrypted: $dec1"
+        if [ "$dec" == "$dec2" ]; then
+            echo ""
+        else
+            if [ "$dec" == "$dec4" ]; then
+                echo ""
+            else
+                nut=`echo "\033[1;36m[$now] $dec" >> /tmp/log1.dat`
+            fi
+        fi
+        emoji
+        msgs=`tail -$size1 /tmp/log1.dat`
+        SUB='Message Encrypted'
+        fuck=1
+        if [[ "$dec3" == *"$SUB"* ]]; then
+            printf "$msgs"
+            fuck=2
+
+        fi
+        SUB2='Message Decrypted'
+        if [[ $fuck == 2 ]]; then
+            echo ""
+        else
+            if [[ "$dec" == *"$SUB2"* ]]; then
+                printf "$msgs"
+                if [[ "$(xdotool getwindowfocus)" -eq "$winid" ]]; then
+                    echo ""
+                else
+                    echo ""
+                    #Tried to do notifications but dosent work well under sudo
+                    #echo 'message:New Message!' | timeout 0.1 zenity --notification --listen --display=:0.0 2>/dev/null
+                fi
+            fi
+        fi
+    fi
+}
+math() {
+  i="0"
+  calc=""
+  calcside=""
+  msgboxcharbefore=${#msg}-4
+  msgboxcharafter=$columns-$msgboxcharbefore
+  while [[ $i -lt $columns ]]
+  do
+    calc2="═"
+    calc="$calc$calc2"
+    i=$[$i+1]
+  done
+  i="1"
+  while [[ $i -lt $msgboxcharafter ]]
+  do
+    calcside2=" "
+    calcside="$calcside$calcside2"
+    i=$[$i+1]
+  done
+  fixchat=""
+  cnt=`grep -c '' /tmp/log1.dat`
+  if [[ $size1 -gt $cnt ]]; then
+    i=`expr $cnt + 1`
+    j=$i
+    while [[ $i -lt $size1 ]]
+    do
+      fixchat2="\n"
+      fixchat="$fixchat$fixchat2"
+      i=$[$i+1]
+    done
+  fi
+}
+GUI () {
+  output3=$(getMSG)
+  l=`expr 0 + 21 + ${#name}`
+  printf "\033[1;31mRecipients: $name\033[0m"; while [[ $columns -gt l ]]; do printf " "; l=$[$l+1]; done; printf "\033[1;34m" ;date +"%r"
+  printf "\033[1;31m$calc══"
+  echo "$output3"
+  printf "\033[1;31m"
+  printf "$fixchat"
+  printf "\n\n"
+  stty echo
+  printf "╔$calc"
+  printf "╗"
+  #printf %"$COLUMNS"s |tr " " "═"
+  printf "\n"
+}
+view () {
+    read -p "Who do you want to message? : " name
+    while true
+    do
+        tput civis
+        stty -echo
+        size=`tput lines`
+        columns=`tput cols`
+        columns=$[$columns-2]
+        size1="$(($size-15))"
+        math
+        output1=$(banner)
+        output2=$(GUI)
+        clear
+        echo "$output1"
+        echo "$output2"
+        read -t 0.03 -s -N 1 -p "║ ->> $msg$calcside║
+╚$calc╝" msg1
+        stty -echo
+        msg2=`printf '%q\n' "$msg1"`
+        if [[ $msg2 == *"\n"* ]]; then
+            send
+            msg=""
+        elif [[ $msg2 == *"\177"* ]]; then
+            msg=`echo ${msg:0:$((${#msg}-1))}`
+        else
+            msg="$msg$msg1"
+        fi
+    done
+}
+message () {
+    touch lsm.enc
+    read -p "Who do you want to message? : " name
+    while true
+    do
+        clear
+        banner
+        printf "\n\033[1;31mExit: !quit\033[0m    "
+        printf "\033[1;31mClear: !clear\033[0m    "
+        printf "\033[1;31mBanner: !banner\033[0m    "
+        printf "\033[1;31mMSG Someone: !msg\033[0m\n"
+        read -p "Send to: $name>>" msg
+        send
+    done
+}
+#HackerViewer is the latest addon and is still a work in progress
+#Current goals are to get better image compression ive worked on this a little bit by only sending changed pixels and overwriting on top of the receiving image on the client side
+#Dosent work fully yet but should make perfomance insanely better with this.
+hackerviewer () {
+    i="1"
+    read -p "Username? " teamnamelisten
+    read -p "Connect to? " teamnameconnect
+    echo "Starting..."
+    (while true; do feh /tmp/.received.png --title "HackerViewer v1.0" -N -q --scale-down --auto-zoom > /dev/null 2>&1; done) &
+    wget https://cdn.wallpapersafari.com/74/29/LYl9Zt.png -O /tmp/.sendcache.png > /dev/null 2>&1
+    echo "Close this terminal to end session."
+    while true; do
+      scrot /tmp/.send.png --silent -o > /dev/null 2>&1
+      convert /tmp/.send.png /tmp/.sendcache.png \( -clone 0,1 -compose difference -composite -colorspace gray -threshold 0 \) -delete 1 +swap -compose multiply -composite /tmp/.difference.png
+      curl -T /tmp/.difference.png ftp://IP_ADDRESS:34812/pub/$teamnamelisten.png > /dev/null 2>&1
+      curl  ftp://IP_ADDRESS:34812/pub/$teamnameconnect.png -o /tmp/.received.png > /dev/null 2>&1
+      while [ $i -lt 1 ]; do
+        \cp -f /tmp/.received.png /tmp/.receivedcache.png
+        i=$[$i+1]
+      done
+      composite -blend 100 /tmp/.received.png /tmp/.receivedcache.png /tmp/.received.png
+      #\cp -f /tmp/.sendcache.png /tmp/.send.png
+    done
+}
+
+if [ "$1" == "view" ]; then
+    view
+elif [ "$1" == "run" ]; then
+    echo "Starting Services."
+    sudo gpg -o /tmp/log1.dec /tmp/log1.dat > /dev/null 2>&1
+    sudo rm /tmp/log1.dat > /dev/null 2>&1
+    sudo mv /tmp/log1.dec /tmp/log1.dat > /dev/null 2>&1
+    listen
+    clear
+    view
+elif [ "$1" == "light" ]; then
+    echo "Starting Services."
+    sudo gpg -o /tmp/log1.dec /tmp/log1.dat > /dev/null 2>&1
+    sudo rm /tmp/log1.dat > /dev/null 2>&1
+    sudo mv /tmp/log1.dec /tmp/log1.dat > /dev/null 2>&1
+    lightweightmode=true
+    listen
+    clear
+    lightView
+elif [ "$1" == "hackerviewer" ]; then
+    hackerviewer
+elif [ "$1" == "install" ]; then
+    echo "set ssl:verify-certificate no" >> ~/.lftprc
+    sudo apt update -y && sudo apt upgrade -y
+    sudo apt install gnome-screenshot -y
+    sudo apt install imagemagick -y
+    sudo apt install imagemagick-doc -y
+    sudo apt install scrot -y
+    sudo apt install tftp -y
+    sudo apt install lftp -y
+    sudo apt install jpegoptim -y
+    sudo apt install netcat-openbsd -y
+    sudo apt install curl -y
+    sudo apt install opensl -y
+    sudo apt install screen -y
+    sudo apt install tac -y
+    sudo apt install script -y
+    sudo apt install gpg -y
+    sudo apt install libimlib2-dev -y
+    sudo apt install zenity -y
+    sudo apt install libx11-dev -y
+    sudo apt install libxinerama-dev -y
+    sudo apt install libcurl4-openssl-dev -y
+    sudo apt install openimageio-tools -y
+    sudo apt-get install libxt-dev -y
+    cd /tmp
+    git clone https://github.com/derf/feh.git
+    cd feh
+    make inotify=1
+    make install flag=bool
+    cp /usr/local/bin/feh /usr/bin/feh
+    wget IP_ADDRESS:81/clientbanner
+    sudo mv clientbanner /usr/bin/clientbanner
+    sudo rm /usr/bin/client
+    sudo mv client /usr/bin/client
+    echo "Use with the command client!"
+    exit 1
+else
+    echo "Please specify 'install', 'run', 'light' or 'hackerviewer' example: $0 run"
+fi
